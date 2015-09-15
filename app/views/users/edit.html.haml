@@ -38,7 +38,7 @@
       %h3= t('.account_info')
       = f.input :email, :required => false, :disabled => true
       = f.input :username, :required => false, :disabled => true
-    - if current_site.local_auth_enabled? || @user.admin?
+    - if can?(:update_password, @user)
       #change-password
         %h3= t('.change_password')
         - unless current_user.superuser?
@@ -51,7 +51,7 @@
       %h3= t('.preferences')
 
       = f.input :timezone, :required => false do
-        = f.time_zone_select :timezone, nil, :include_blank => true
+        = f.collection_select :timezone, Mconf::DSTTimezone.all, :name, :dst_string, :include_blank => true
 
       = f.input :expanded_post, :required => false, :as => :radio_buttons
 

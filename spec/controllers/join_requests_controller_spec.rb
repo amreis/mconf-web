@@ -18,7 +18,7 @@ describe JoinRequestsController do
         sign_in(user)
       }
 
-      it { should_authorize space, :index, :space_id => space.to_param, :ability_name => :index_join_requests }
+      it { should_authorize space, :index, :space_id => space.to_param, :ability_name => :manage_join_requests }
 
       context "template and layout" do
         before(:each) { get :index, :space_id => space.to_param }
@@ -108,6 +108,18 @@ describe JoinRequestsController do
       }
       it { should redirect_to(login_path) }
     end
+
+    # There's no link shown in the interface to permit this, but we'll block it on a controller level
+    context "a logged in user trying to join an unapproved space" do
+      subject { get :new, space_id: space.to_param }
+      before(:each) {
+        space.update_attributes(approved: false)
+        sign_in(user)
+      }
+
+      it { expect { subject }.to raise_error(CanCan::AccessDenied) }
+    end
+
   end
 
   describe "#show" do
@@ -194,6 +206,50 @@ describe JoinRequestsController do
       it { JoinRequest.last.group.should eql(space) }
       it { JoinRequest.last.role_id.should eq(JoinRequest.default_role.id) }
       it { JoinRequest.last.request_type.should eql(JoinRequest::TYPES[:request]) }
+    end
+
+    # The user can't do this via interface but could still happen by modifying a form
+    # or directly posting to a url
+    context "user requests membership on a space where he's already invited" do
+      before(:each) {
+        space.join_requests.create(candidate: user, email: user.email, request_type: 'invite')
+        sign_in(user)
+
+        expect {
+          post :create, :space_id => space.to_param, :join_request => jr.attributes
+        }.to change{space.join_requests.count}.by(0)
+      }
+
+      it { should redirect_to(spaces_path) }
+      it { should set_the_flash.to(I18n.t('join_requests.create.duplicated')) }
+    end
+
+    context "user requests membership on a space where he's already requested it" do
+      before(:each) {
+        space.join_requests.create(candidate: user, email: user.email, request_type: 'request')
+        sign_in(user)
+
+        expect {
+          post :create, :space_id => space.to_param, :join_request => jr.attributes
+        }.to change{space.join_requests.count}.by(0)
+      }
+
+      it { should redirect_to(spaces_path) }
+      it { should set_the_flash.to(I18n.t('join_requests.create.duplicated')) }
+    end
+
+    context "user requests membership on a space where he's already a member" do
+      before(:each) {
+        space.add_member!(user)
+        sign_in(user)
+
+        expect {
+          post :create, :space_id => space.to_param, :join_request => jr.attributes
+        }.to change{space.join_requests.count}.by(0)
+      }
+
+      it { should redirect_to(spaces_path) }
+      it { should set_the_flash.to(I18n.t('join_requests.create.you_are_already_a_member')) }
     end
 
     context "user requests membership on a private space" do
@@ -391,7 +447,7 @@ describe JoinRequestsController do
     let(:space) { FactoryGirl.create(:space_with_associations) }
     let(:user) { FactoryGirl.create(:user) }
 
-    it { should_authorize space, :invite, :space_id => space.to_param }
+    it { should_authorize space, :invite, :space_id => space.to_param, :ability_name => :manage_join_requests }
 
     context "if the user is not a member of the space" do
       before(:each) {

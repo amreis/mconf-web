@@ -114,6 +114,7 @@ namespace :db do
       space.description = Populator.sentences(1..3)
       space.public = [ true, false ]
       space.disabled = false
+      space.approved = true
       space.permalink = name.parameterize
       space.repository = [ true, false ]
 
@@ -282,6 +283,7 @@ namespace :db do
         recording.start_time = @created_at_start..Time.now
         recording.end_time = recording.start_time + rand(5).hours
         recording.description = Populator.words(5..8)
+        recording.size = rand((20*1024**2)..(500*1024**2)) #size ranging from 20Mb to 500Mb
 
         # Recording metadata
         BigbluebuttonMetadata.populate 0..3 do |meta|

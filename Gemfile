@@ -140,6 +140,8 @@ group :development, :test do
   gem 'simplecov', :require => false
   gem 'fooldap'
   gem 'spring'
+  gem 'zonebie'
+  gem 'timecop'
 end
 
 group :test do
